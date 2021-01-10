@@ -1,0 +1,129 @@
+JWT:
+https://youtu.be/soGRyl9ztjI
+https://youtu.be/_XbXkVdoG_0
+
+OAuth:
+https://youtu.be/t4-416mg6iU
+
+
+HTTP is the most common protocol for acessing info on web
+It is a Stateless protocol. Every interaction in HTTP needs to contain all the information needed for it. Nothing is remembered from previous interactions. No state is maintained. All are as good as new.
+
+E.g. you need a static web page -> just need a URL. Ping that URL, you get a web page.
+Problem happens when we try to access dynamic web page. So different users would get different response.
+
+So you need URL + identity of the user to get the dynamic web page. EVERYTIME! Every interaction you have to provide all the details of user because HTTP is Stateless.
+
+How to solve the problem of remembering someone?
+- Session Token
+- JSON Web Token (JWT)
+
+Session token + cookie:
+When a user sends a request, The server maps all the user info in a table/log to a token and returns it as a response. By default this token is stored in a cookie in the browser and is appended to the request header for all the subsequent requests.
+This is applicable for monolith apps which would have only 1 server. How about today?
+
+We have multiple servers which sit behind a load balancer. Load balancer decides request would go to which server. But here if server A assigns the token to user and stores it in its log table, other servers would not have any idea about this user. So if user request is assigned to server B next time by the load balancer what do you do?
+
+- Implement a shared session cache like Redis which all the servers use to create and get id/details. But this can be a single point of failure (SPOF) for the whole app.
+- Sticky session pattern : The load balancer would send user request only to the server which was responsible for creating the token initially. It isn't scalable. Also in a microservice pattern, where there are multiple servers for each instance/logic unit. How do you carry the user info everywhere?
+
+To solve this problem - why is there a need to store user data with the server? Let user come in with it. So when user comes the first time, you define the user by some properties, encode that data and give it back to user. Only you have the key to decode that data. So next time user comes with a request and this encoded/encrypted data, you can use the key and know who the user is and her priviledges.
+
+JSON web token does just this. Key difference betn JWT and session tokens is session is a refernce token - it contains a reference to a value stored somewhere. JWT is a value token - you decrypt it and you get the entire data.
+
+JWT has 3 parts:
+----------------
+https://jwt.io/#debugger-io
+
+1) header
+2) Payload
+3) Signature
+
+Encoded:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 -> header, nothing but base64 encoded value for :
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ -> payload, here's where the user data is, base64 encoded value for: 
+{
+  "sub": "1234567890",
+  "name": "John Doe",
+  "iat": 1516239022
+}
+
+The header and payload is accessible to anybody. Anyone can convert/decode it to json objects. So how do we make sure that user doesn't modify the payload and send it back to server for malicious purposes?
+
+This is taken care by the signature.
+
+Signature = sha256_encryption(header + "." + payload, secret key)
+The secret key is only known to the server and the signature produced depends on the values on both payload and secret key. So if payload changes, a different signature will be conputed and server will know there has been some tampering!
+
+** JWT is used for Authorisation and not authentication:
+--------------------------------------------------------
+
+Workflow:
+USer  ---------- User logs in first time with id/pwd -------> Server validates the user
+      <--------- sends back the JWT token to user -----------
+
+JWT token gets stored on client side in either a cookie or local storage.
+      --- JWT tokens are passed to the server in every subsequent req --->
+
+Server validates the token : sha256_encryption(header + "." + payload, secret key) == assigned signature
+
+How is JWT token passed in a request?
+-------------------------------------
+
+In HTTP header: (these are key value pairs)
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+Bearer is a keyword here
+
+How secure is JWT?
+------------------
+The payload can be decoded and read by anyone, so not secure as such. Don't pass confidential info like passwords, ssn, account details etc.
+
+What if someone steals my JWT and uses it themselves?
+-----------------------------------------------------
+Yes someone can. Tom can take Jerry's jwt and impersonate as Jerry. So need to use OAuth.
+
+How to disable a JWT?
+---------------------
+If someone does steal a JWT what to do?
+Incase of a session id, if the session has been compromised, you can just log off and the session will be deleted.
+To implement logging off mechanism, the server has a list of blacklisted JWTs. So a jwt comes within the list of JWT, server doesn't allow.
+
+
+OAuth: - OAuth 2.0, latest version
+------
+
+Auth = Authentication or Authorization? - Authorization!! Well actually both
+Originally the feature was to Authorise one service to use another service
+
+Four components to this workflow:
+User/Resource Owner, Resource Server, Authorization server, Service which wants the resource, let's name it Service
+
+Three types:
+
+Explicit method -
+1) Resource Owner goes to Service to get her work done
+2) Service needs resources from Resource server so sends a request to it. This request reaches Authorization server which acts like a gateway
+3) Authorization server sends User/ resource owner a notification telling that Service wants to access resources and asks does she allow it
+4) If the User allows it, Authorization server sends back a Authorization token to Service
+5) Service sends this auth token back to Authorization server confirming it that it is indeed him who is asking for data
+6) Authorization Server sends an access token back to Service
+7) Service sends uses this token to access data from the resource server
+
+Implicit method -
+Same as explicit method minus the exchange of auth token. Auth server directly sends the access token after user confirms. A bit risky because anyone can use the access token and get the a data, whereas explicit method has mechanisms to prevent this. These access tokens are usually short lived due to this reason and are used in javascript only apps (frontend mainly apps)
+
+Client Credential flow: (when the client is well trusted)
+Here there is no need for confirmation from User as we know that the Service is trustworthy. This usually happens when the Resource seeker and Resource provider are both microservices in the same environment/developed by the same people/implement the same app.
+
+So Requester goes to Auth server - auth server gives it an access token - requester gives this token to provider - provider gives the resources which are allowed as per the token
+
+provider is usually a microservice connected to a database and requester are often higher level microservices. The auth server assigns the token in such a way that it tells the provider that only for e.g shop details need to be given to ServiceA and not customer details.
+
