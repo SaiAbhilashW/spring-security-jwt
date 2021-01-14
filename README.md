@@ -8,3 +8,19 @@ Do check out the 'notes' file for links to all the videos used to study and summ
 V1 - JWT token generation and validation for the single static user. No database integration.
 
 V2 - integrating MySQL database and JPA with the existing spring security app.
+
+MySQL DB Queries:
+CREATE TABLE user (
+    id int NOT NULL AUTO_INCREMENT,
+    active int,
+    username varchar(255),
+    password varchar(255),
+    roles varchar(255),
+	PRIMARY KEY (id)
+);
+
+INSERT INTO user (active, username, password, roles)
+VALUES (0, 'jerry', 'pwd', 'ROLE_ADMIN');
+
+INSERT INTO user (active, username, password, roles)
+VALUES (1, 'tom', 'pwd', 'ROLE_USER');

@@ -31,15 +31,14 @@ public class HelloResource {
 
     @GetMapping("/hello")
     public String hello(){
-        return "Hello World";
+        return "Hello! Login to see magic!";
     }
 
     //takes in the username and password from request and authenticates, if no error, it generates a jwt token and sends back in the response
     @PostMapping(value="authenticate")
     public ResponseEntity<?> createAuthTokenEntity(@RequestBody AuthenticationRequest authenticationRequest) throws Exception{
        
-        // tries to authenticate the user, either way you get the jwt token of the static user created
-        // work on this to make the dependency of giving authrztn token on authentication!
+        // Authentication manager goes to the loadUserByUsername service with the username and password, if the user is present in db, returns the UserDetails Object otherwise throws an exception
        try{
         authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword())
@@ -53,5 +52,15 @@ public class HelloResource {
        final String jwt = jwtUtil.generateToken(userDetails);
 
        return ResponseEntity.ok(new AuthenticationResponse(jwt));
-    }   
+    }  
+    
+    @GetMapping("/user")
+    public String user(){
+        return "Welcome user!";
+    }
+
+    @GetMapping("/admin")
+    public String admin(){
+        return "Welcome admin!";
+    }
 }
